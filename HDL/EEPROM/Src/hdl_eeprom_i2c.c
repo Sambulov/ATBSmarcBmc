@@ -8,7 +8,7 @@ typedef struct {
   /* private */
   coroutine_t worker;
   hdl_i2c_message_t i2c_msg;
-  hdl_eeprom_i2c_message_t *eeprom_msg;
+  hdl_eeprom_i2c_data_t *eeprom_msg;
   uint16_t mem_addr;
   uint8_t state;
   uint32_t burn_time;
@@ -30,7 +30,7 @@ static uint8_t _eeprom_worker(coroutine_t *this, uint8_t cancel, void *arg) {
   switch (eeprom->state) {
     case EE_STATE_SET_MEM_ADDR_MSG: {
       eeprom->i2c_msg.address = eeprom->config->chip_address;
-      uint16_t addr_msb = eeprom->eeprom_msg->offset + eeprom->eeprom_msg->transferred;
+      uint16_t addr_msb = eeprom->eeprom_msg->address + eeprom->eeprom_msg->transferred;
       eeprom->mem_addr = (addr_msb >> 8) | (addr_msb << 8);
       eeprom->i2c_msg.buffer = (uint8_t *)&(eeprom->mem_addr);
       volatile uint8_t x = eeprom->i2c_msg.buffer[0];
@@ -62,7 +62,7 @@ static uint8_t _eeprom_worker(coroutine_t *this, uint8_t cancel, void *arg) {
         else {
           eeprom->i2c_msg.address = eeprom->config->chip_address;
           eeprom->i2c_msg.buffer = (eeprom->eeprom_msg->buffer + eeprom->eeprom_msg->transferred);
-          eeprom->i2c_msg.length = eeprom->eeprom_msg->count - eeprom->eeprom_msg->transferred;
+          eeprom->i2c_msg.length = eeprom->eeprom_msg->size - eeprom->eeprom_msg->transferred;
           eeprom->i2c_msg.options = HDL_I2C_MESSAGE_STOP;
           if(!(eeprom->eeprom_msg->state & HDL_EEPROM_MSG_OPTION_WRITE)) {
             eeprom->i2c_msg.options |= HDL_I2C_MESSAGE_START | HDL_I2C_MESSAGE_ADDR | HDL_I2C_MESSAGE_MRSW | HDL_I2C_MESSAGE_NACK_LAST;
@@ -86,23 +86,23 @@ static uint8_t _eeprom_worker(coroutine_t *this, uint8_t cancel, void *arg) {
 
     case EE_STATE_AWAIT_DATA_MSG: {
       if(eeprom->i2c_msg.status & HDL_I2C_MESSAGE_STATUS_COMPLETE) {
-        hdl_eeprom_i2c_message_t *msg = eeprom->eeprom_msg;
-        msg->transferred += eeprom->i2c_msg.transferred;
+        hdl_eeprom_i2c_data_t *data = eeprom->eeprom_msg;
+        data->transferred += eeprom->i2c_msg.transferred;
         eeprom->state = EE_STATE_IDLE;
         eeprom->eeprom_msg = NULL;
-        msg->state |= HDL_EEPROM_MSG_STATUS_COMPLETE;
+        data->state |= HDL_EEPROM_MSG_STATUS_COMPLETE;
         if(eeprom->i2c_msg.status & (HDL_I2C_MESSAGE_FAULT_ARBITRATION_LOST | HDL_I2C_MESSAGE_FAULT_BUS_ERROR | HDL_I2C_MESSAGE_FAULT_BAD_STATE)) {
-          msg->state |= HDL_EEPROM_MSG_ERROR_BUS;
+          data->state |= HDL_EEPROM_MSG_ERROR_BUS;
           break;
         }
         if(eeprom->i2c_msg.status & HDL_I2C_MESSAGE_STATUS_NACK) {
-          msg->state |= HDL_EEPROM_MSG_ERROR_NACK;
+          data->state |= HDL_EEPROM_MSG_ERROR_NACK;
           break;
         }
-        if(msg->state & HDL_EEPROM_MSG_OPTION_WRITE) {
+        if(data->state & HDL_EEPROM_MSG_OPTION_WRITE) {
           eeprom->state = EE_STATE_AWAIT_BURNING;
-          eeprom->eeprom_msg = msg;
-          msg->state &= ~HDL_EEPROM_MSG_STATUS_COMPLETE;
+          eeprom->eeprom_msg = data;
+          data->state &= ~HDL_EEPROM_MSG_STATUS_COMPLETE;
           hdl_time_counter_t *time_cnt = (hdl_time_counter_t *)eeprom->module.dependencies[1];
           eeprom->burn_time = hdl_time_counter_get(time_cnt);
         }
@@ -114,7 +114,7 @@ static uint8_t _eeprom_worker(coroutine_t *this, uint8_t cancel, void *arg) {
       hdl_time_counter_t *time_cnt = (hdl_time_counter_t *)eeprom->module.dependencies[1];
       uint32_t now = hdl_time_counter_get(time_cnt);
       if(TIME_ELAPSED(eeprom->burn_time, eeprom->config->write_time, now)) {
-        if(eeprom->eeprom_msg->transferred < eeprom->eeprom_msg->count) {
+        if(eeprom->eeprom_msg->transferred < eeprom->eeprom_msg->size) {
           eeprom->state = EE_STATE_SET_MEM_ADDR_MSG;
         }
         else {
@@ -146,13 +146,30 @@ hdl_module_state_t hdl_eeprom_i2c(void *desc, uint8_t enable) {
   return HDL_MODULE_UNLOADED;
 }
 
-uint8_t hdl_eeprom_i2c_transfer(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_message_t *msg) {
-  hdl_eeprom_i2c_private_t *eeprom = (hdl_eeprom_i2c_private_t *)desc;
-  if((msg == NULL) || (msg->count == 0) || (msg->buffer == NULL) || 
-     (eeprom == NULL) || (hdl_state(&eeprom->module) == HDL_MODULE_FAULT) || (eeprom->eeprom_msg != NULL))
-    return HDL_FALSE;
-  msg->state |= HDL_EEPROM_MSG_STATUS_PROCESSING;
-  msg->transferred = 0;
-  eeprom->eeprom_msg = msg;
+static uint8_t _hdl_eeprom_i2c_transfer(hdl_eeprom_i2c_private_t *eeprom, hdl_eeprom_i2c_data_t *data) {
+  data->state |= HDL_EEPROM_MSG_STATUS_PROCESSING;
+  data->transferred = 0;
+  eeprom->eeprom_msg = data;
   return HDL_TRUE;
+}
+
+static hdl_eeprom_i2c_private_t *_hdl_eeprom_i2c_check(hdl_eeprom_i2c_private_t *eeprom, hdl_eeprom_i2c_data_t *data) {
+  if((data == NULL) || (data->size == 0) || (data->buffer == NULL) || 
+     (eeprom == NULL) || (hdl_state(&eeprom->module) == HDL_MODULE_FAULT) || (eeprom->eeprom_msg != NULL))
+    return NULL;
+  return eeprom;
+}
+
+uint8_t hdl_eeprom_i2c_read(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_data_t *data) {
+  hdl_eeprom_i2c_private_t *eeprom = _hdl_eeprom_i2c_check((hdl_eeprom_i2c_private_t *)desc, data);
+  if(eeprom == NULL) return HDL_FALSE;
+  data->state = HDL_EEPROM_MSG_OPTION_READ;
+  return _hdl_eeprom_i2c_transfer(eeprom, data);
+}
+
+uint8_t hdl_eeprom_i2c_write(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_data_t *data) {
+  hdl_eeprom_i2c_private_t *eeprom = _hdl_eeprom_i2c_check((hdl_eeprom_i2c_private_t *)desc, data);
+  if(eeprom == NULL) return HDL_FALSE;
+  data->state = HDL_EEPROM_MSG_OPTION_WRITE;
+  return _hdl_eeprom_i2c_transfer(eeprom, data);
 }

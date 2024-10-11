@@ -3,8 +3,6 @@
 
 #include "hdl.h"
 
-#include "hdl_eeprom_i2c.h"
-#include "ms5194t.h"
 #include "uspd_ain_port.h"
 #include "som_link.h"
 #include "median_filter.h"

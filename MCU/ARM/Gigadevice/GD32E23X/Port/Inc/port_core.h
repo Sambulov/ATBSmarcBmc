@@ -4,6 +4,7 @@
 
 #include "port_exti.h"
 #include "port_flash.h"
+#include "gd32e23x.h"
 
 #define HDL_VTOR_TAB_ALIGN         256  //(2 << SCB_VTOR_TBLOFF_Pos)
 

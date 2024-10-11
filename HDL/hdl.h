@@ -25,6 +25,10 @@ extern "C" {
 #include "hdl_button.h"
 #include "hdl_shift_reg.h"
 #include "hdl_timer.h"
+
+#include "hdl_eeprom_i2c.h"
+#include "ms5194t.h"
+
 #include "RK809.h"
 #include "smarc_carrier.h"
 

@@ -45,7 +45,7 @@
                 "-f", "${workspaceFolder}/MCU/ARM/Nuvoton/NUM46X/Res/MCU/ARM.cfg",
                 "-c", "init",
                 "-c", "halt",
-                "-c", "flash write_image erase ./build/bmc.hex",
+                "-c", "flash write_image erase ./build/firmware.hex",
                 "-c", "reset run",
                 "-c", "shutdown"
             ],

@@ -1,0 +1,5 @@
+if (CORE STREQUAL "ARM")
+  add_subdirectory("./ARM")
+else()
+  message(SEND_ERROR "Core ${CORE} unsupported!")
+endif()

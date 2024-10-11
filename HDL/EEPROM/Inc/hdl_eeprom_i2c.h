@@ -28,18 +28,19 @@ typedef enum {
   HDL_EEPROM_MSG_ERROR_NO_RESPONSE = 0x10,
   HDL_EEPROM_MSG_ERROR_BUS         = 0x20,
   HDL_EEPROM_MSG_ERROR_NACK        = 0x40,
-} hdl_eeprom_i2c_message_state_t;
+} hdl_eeprom_i2c_data_state_t;
 
 typedef struct {
   uint8_t *buffer;
-  uint32_t count;
+  uint32_t size;
   uint32_t transferred;
-  uint16_t offset;
-  hdl_eeprom_i2c_message_state_t state;
-} hdl_eeprom_i2c_message_t;
+  uint16_t address;
+  hdl_eeprom_i2c_data_state_t state;
+} hdl_eeprom_i2c_data_t;
 
 hdl_module_state_t hdl_eeprom_i2c(void *desc, uint8_t enable);
 
-uint8_t hdl_eeprom_i2c_transfer(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_message_t *msg);
+uint8_t hdl_eeprom_i2c_read(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_data_t *data);
+uint8_t hdl_eeprom_i2c_write(hdl_eeprom_i2c_t *desc, hdl_eeprom_i2c_data_t *data);
 
 #endif /* HDL_EEPROM_I2C_H_ */

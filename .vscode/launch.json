@@ -10,7 +10,7 @@
             "type": "cortex-debug",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "executable": "./build/bmc.elf",
+            "executable": "./build/firmware.elf",
             //"showDevDebugOutput": "parsed",
             "windows": {
                 "searchDir": [ 
@@ -40,7 +40,7 @@
             ],
             "preRestartCommands": [
                 "set remotetimeout 200",
-                "file ./build/bmc.elf",
+                "file ./build/firmware.elf",
                 "load",
                 "enable breakpoint",
                 "set breakpoint pending on",
@@ -54,7 +54,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},
@@ -79,7 +79,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},
@@ -104,7 +104,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},
@@ -129,7 +129,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},
@@ -154,7 +154,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},
@@ -179,7 +179,7 @@
 			"type": "cortex-debug",
 			"request": "launch",
 			"cwd": "${workspaceFolder}",
-			"executable": "./build/bmc.elf",
+			"executable": "./build/firmware.elf",
 			"windows": {
 				"serverpath": "JLinkGDBServerCL.exe",
 			},

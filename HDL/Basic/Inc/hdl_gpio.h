@@ -8,7 +8,7 @@ typedef enum {
   HDL_GPIO_HIGH = !HDL_GPIO_LOW
 } hdl_gpio_state;
 
-_Static_assert(HDL_GPIO_LOW == !HDL_GPIO_HIGH, "Expression (HDL_GPIO_LOW == !HDL_GPIO_HIGH) must be always true");
+_Static_assert(HDL_GPIO_LOW == !HDL_GPIO_HIGH, "Expression (HDL_GPIO_LOW == !HDL_GPIO_HIGH) must always be true");
 
 typedef struct {
   const hdl_gpio_port_hw_config_t *hwc;
