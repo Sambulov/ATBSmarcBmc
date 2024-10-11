@@ -7,10 +7,11 @@
 typedef struct {
   hdl_module_t module;
   const hdl_spi_server_config_t *config;
-  /* private */
-  hdl_delegate_t spi_isr;
-  hdl_delegate_t nss_isr;
-  hdl_transceiver_t *transceiver;
+  struct {
+    hdl_delegate_t spi_isr;
+    hdl_delegate_t nss_isr;
+    hdl_transceiver_t *transceiver;
+  } private;  
 } hdl_spi_server_private_t;
 
 HDL_ASSERRT_STRUCTURE_CAST(hdl_spi_server_private_t, hdl_spi_server_t, SPI_SERVER_PRIVATE_SIZE, port_spi.h);
@@ -19,8 +20,8 @@ static void event_spi_nss(uint32_t event, void *sender, void *context) {
   hdl_spi_server_private_t *spi = (hdl_spi_server_private_t*)context;
   hdl_gpio_pin_t *nss = (hdl_gpio_pin_t *)spi->module.dependencies[3];
   if(event & (uint32_t)nss->module.reg){
-    if((spi->transceiver != NULL) && (spi->transceiver->end_of_transmission != NULL))
-      spi->transceiver->end_of_transmission(spi->transceiver->proto_context);
+    if((spi->private.transceiver != NULL) && (spi->private.transceiver->end_of_transmission != NULL))
+      spi->private.transceiver->end_of_transmission(spi->private.transceiver->proto_context);
   }
 }
 
@@ -32,15 +33,15 @@ hdl_spi_server_private_t *spi = (hdl_spi_server_private_t *)context;
 		/* spi rx ---------------------------------------------------*/
 		if (state & SPI_STAT_RBNE) {
 			uint16_t data = SPI_DATA((uint32_t)spi->module.reg);
-      if((spi->transceiver != NULL) && (spi->transceiver->rx_data != NULL)) {  
-          spi->transceiver->rx_data(spi->transceiver->proto_context, (uint8_t *)&data, 1);
+      if((spi->private.transceiver != NULL) && (spi->private.transceiver->rx_data != NULL)) {  
+          spi->private.transceiver->rx_data(spi->private.transceiver->proto_context, (uint8_t *)&data, 1);
       }
 		}
 		/* spi tx ---------------------------------------------------*/
 		if ((state & SPI_STAT_TBE) && (cr1 & SPI_CTL1_TBEIE)) {
       uint16_t data = 0;
-      if((spi->transceiver != NULL) && (spi->transceiver->tx_empty != NULL)) {
-        spi->transceiver->tx_empty(spi->transceiver->proto_context, (uint8_t *)&data, 1);
+      if((spi->private.transceiver != NULL) && (spi->private.transceiver->tx_empty != NULL)) {
+        spi->private.transceiver->tx_empty(spi->private.transceiver->proto_context, (uint8_t *)&data, 1);
       }
       SPI_DATA((uint32_t)spi->module.reg) = data;
 		}
@@ -66,14 +67,14 @@ hdl_module_state_t hdl_spi_server(void *desc, uint8_t enable) {
     spi_init((uint32_t)spi->module.reg, &init);
     SPI_CTL1((uint32_t)spi->module.reg) |= SPI_CTL1_RBNEIE | SPI_CTL1_TBEIE | SPI_CTL1_ERRIE;
     //SPI_CTL0((uint32_t)spi->module.reg) |= SPI_CTL0_SWNSS; 
-    spi->transceiver = NULL;
-    spi->nss_isr.context = desc;
-    spi->nss_isr.handler = &event_spi_nss;
-    spi->spi_isr.context = desc;
-    spi->spi_isr.handler = &event_spi_isr_server;
+    spi->private.transceiver = NULL;
+    spi->private.nss_isr.context = desc;
+    spi->private.nss_isr.handler = &event_spi_nss;
+    spi->private.spi_isr.context = desc;
+    spi->private.spi_isr.handler = &event_spi_isr_server;
     hdl_interrupt_controller_t *ic = (hdl_interrupt_controller_t *)spi->module.dependencies[5];
-    hdl_interrupt_request(ic, spi->config->spi_interrupt, &spi->spi_isr);
-    hdl_interrupt_request(ic, spi->config->nss_interrupt, &spi->nss_isr);
+    hdl_interrupt_request(ic, spi->config->spi_interrupt, &spi->private.spi_isr);
+    hdl_interrupt_request(ic, spi->config->nss_interrupt, &spi->private.nss_isr);
     spi_enable((uint32_t)spi->module.reg);
     return HDL_MODULE_ACTIVE;
   }
@@ -83,6 +84,6 @@ hdl_module_state_t hdl_spi_server(void *desc, uint8_t enable) {
 
 void hdl_spi_server_set_transceiver(hdl_spi_server_t *spi, hdl_transceiver_t *transceiver) {
   if(spi != NULL) {
-    ((hdl_spi_server_private_t*)spi)->transceiver = transceiver;
+    ((hdl_spi_server_private_t*)spi)->private.transceiver = transceiver;
   }
 }

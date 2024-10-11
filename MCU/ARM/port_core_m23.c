@@ -6,7 +6,9 @@ typedef struct {
   hdl_nvic_irq_n_t irq_type;
   uint8_t priority_group;
   uint8_t priority;
-  hdl_event_t event;
+  struct {
+    hdl_event_t event;
+  } private;
 } hdl_nvic_interrupt_private_t;
 
 HDL_ASSERRT_STRUCTURE_CAST(hdl_nvic_interrupt_private_t, hdl_interrupt_t, HDL_INTERRUPT_PRV_SIZE, hdl_core.h);
@@ -33,7 +35,7 @@ void call_isr(hdl_nvic_irq_n_t irq, uint32_t event) {
     while (*isrs != NULL) {
       if((*isrs)->irq_type == irq) {
         hdl_nvic_interrupt_private_t *isr = (hdl_nvic_interrupt_private_t *)*isrs;
-        if(!hdl_event_raise(&isr->event, ic, event))
+        if(!hdl_event_raise(&isr->private.event, ic, event))
           NVIC_DisableIRQ(irq);
         return;
       }
@@ -136,7 +138,7 @@ uint8_t hdl_interrupt_request(hdl_interrupt_controller_t *ic, const hdl_interrup
   if((hdl_state(&ic->module) != HDL_MODULE_ACTIVE) || (ic->config->interrupts == NULL) || (delegate == NULL) || (isr == NULL))
     return HDL_FALSE;
   hdl_nvic_interrupt_private_t *_isr = (hdl_nvic_interrupt_private_t *)isr;
-  hdl_event_subscribe(&_isr->event, delegate);
+  hdl_event_subscribe(&_isr->private.event, delegate);
   uint32_t prio = ((_isr->priority_group << (8U - ic->config->prio_bits)) | 
                   (_isr->priority & (0xFF >> ic->config->prio_bits)) & 
                   0xFFUL);
